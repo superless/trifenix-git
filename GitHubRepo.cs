@@ -135,6 +135,44 @@ namespace trifenix.git
                 }
             }, message);
         }
+
+        public void Commit(Dictionary<string, Func<bool>> commitMessageFileOperations)
+        {
+            var folder = Clone();
+            using (var repo = new Repository(folder))
+            {
+               
+
+
+
+                // carpeta de código fuente.
+                var srcFolder = folder;
+
+                //ejecutamos los commits del parámetro.
+                foreach (var actionMessage in commitMessageFileOperations)
+                {
+                    var commit = actionMessage.Key;
+
+                    if (actionMessage.Value.Invoke())
+                    {
+                        // añade todos los archivos al stage, después de la ejecución de la operación de commit
+                        Commands.Stage(repo, "*");
+
+                        // commit al servidor
+                        repo.Commit(commit, new Signature(UserName, Email, DateTimeOffset.Now), new Signature(UserName, Email, DateTimeOffset.Now));
+                    }
+
+                }
+
+
+
+                repo.Network.Push(repo.Network.Remotes["origin"], $@"refs/heads/{Branch}", new PushOptions { });
+
+
+
+
+            }
+        }
     }
 
     public class GitHubRepo<T> : IGithubRepo<T>
