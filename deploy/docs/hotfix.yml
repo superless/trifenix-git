@@ -1,0 +1,51 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+variables: 
+  BuildConfiguration: 'release'
+  # nombre del archivo csproj
+  name-project: "mdm-cli"
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'restore'
+    projects: '**/*.csproj'
+    feedsToUse: 'select'
+    vstsFeed: '$(hotfix-feed)'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: '**/*.csproj'
+  displayName: "build solution"
+
+
+- script: |      
+    sudo apt install -y unzip
+    wget https://scripts.trifenix.io/vsxmd/Vsxmd.$(vsxmd-version-production).zip
+    unzip Vsxmd.$(vsxmd-version-production).zip -d ./vsxmd
+    dotnet ./vsxmd/Vsxmd.dll $(name-project).xml nuget-packages
+    git config --global user.email "alejandro.iglesias@trifenix.io"
+    git config --global user.name "alejandro.iglesias"    
+    git clone https://alejandro.iglesias:$(script-token)@github.com/trifenix/docs-trifenix-connect.git web
+    cp -r ./nuget-packages/* ./web/src/pages/nuget-packages
+    cd ./web
+    git add . && git commit -m 'nueva documentacion mdm' 
+    git push origin master
+
+
+      
+
+  displayName: "publicando documentación"
+
+
+

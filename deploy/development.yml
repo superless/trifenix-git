@@ -1,0 +1,61 @@
+trigger:
+    branches:
+      include:        
+        - develop
+
+pool:
+  vmImage: "windows-latest"
+
+variables: 
+  BuildConfiguration: 'release'
+  # nombre del archivo csproj
+  name-project: "trifenix.git"
+  branch: "develop"
+  user: trifenix
+  email: devops@trifenix.io
+    
+# github ejecuta este build, para validar y ejecutar,
+# es decir, dos veces
+# esta instrucción asigna que no se ejecute en el pull request (para validar).
+# sino, que solo se ejecute al modificar la rama.
+pr: none
+ 
+
+
+
+steps:
+  # generamos versión del paquete.
+  - task: PowerShell@2
+    inputs:
+      targetType: 'inline'
+      script: |
+        dotnet tool install trifenix.versions.console -g
+        $currentVersion = trifenix-versions update $(trifenix-versions) --token $(script-token) --user $(user) --email $(email) --branch $(branch) --name $(name-project) --ktype nuget --build $(Build.BuildId)        
+        $setVersion = '##vso[task.setvariable variable=version;]' + $currentVersion
+        Write-Host $setVersion
+    displayName: generando variable version con TRIFENIX VERSIONS
+
+  # toma todos los proyectos que existan además de quien tiene el nuget.
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'restore'
+      projects: '**/*.csproj'
+      feedsToUse: 'select'
+      vstsFeed: '$(draft-feed)'      
+      versioningScheme: byBuildNumber
+    displayName: restore dotnet
+
+  - task: CmdLine@2
+    inputs:
+      script: |
+        dotnet pack $(name-project).csproj --configuration $(BuildConfiguration) /p:Version=$(version) --output $(Build.ArtifactStagingDirectory)
+    displayName: dotnet pack
+    
+  
+  # publica paquete para publicar.
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathtoPublish: "$(Build.ArtifactStagingDirectory)"
+      artifactName: drop
+      publishLocation: 'container'
+    displayName: "publish nuget"
