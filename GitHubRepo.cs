@@ -156,10 +156,21 @@ namespace trifenix.git
                     if (actionMessage.Value.Invoke())
                     {
                         // añade todos los archivos al stage, después de la ejecución de la operación de commit
-                        Commands.Stage(repo, "*");
+                        try
+                        {
+                            Commands.Stage(repo, "*");
 
-                        // commit al servidor
-                        repo.Commit(commit, new Signature(UserName, Email, DateTimeOffset.Now), new Signature(UserName, Email, DateTimeOffset.Now));
+                            // commit al servidor
+                            repo.Commit(commit, new Signature(UserName, Email, DateTimeOffset.Now), new Signature(UserName, Email, DateTimeOffset.Now));
+                        }
+                        catch (Exception exc)
+                        {
+
+                            if (!exc.Message.ToLower().Contains("nothing"))
+                            {
+                                throw exc;
+                            }
+                        }
                     }
 
                 }
